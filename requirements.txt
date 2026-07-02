@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn>=0.29
+pandas>=1.5
+requests>=2.31
+groq==1.0.0
+ephem>=4.1
+python-dotenv>=1.0
+pytest>=7.4
+httpx>=0.24

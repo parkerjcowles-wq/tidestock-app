@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TideStock — Bait Shop Demand Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css?v=2">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="rail">
+    <div class="wordmark">
+      <h1>TIDESTOCK<span class="tick">.</span></h1>
+      <div class="sub">Bait Shop Demand<br>Intelligence</div>
+    </div>
+
+    <svg class="tideline" viewBox="0 0 212 26" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M0 18 C 18 18, 22 8, 40 8 S 62 18, 80 18 92 8 110 8 132 18 150 18 162 8 180 8 202 18 212 18"
+            stroke="#C2401C" stroke-width="1.4" opacity="0.75"/>
+      <path d="M0 22 C 18 22, 22 13, 40 13 S 62 22, 80 22 92 13 110 13 132 22 150 22 162 13 180 13 202 22 212 22"
+            stroke="#2A5D7C" stroke-width="1" opacity="0.45"/>
+    </svg>
+
+    <nav class="nav" id="nav">
+      <a href="#command"   data-nav="command"   class="active"><span class="idx">01</span>Command Center</a>
+      <a href="#inventory" data-nav="inventory"><span class="idx">02</span>Inventory</a>
+      <a href="#signals"   data-nav="signals"><span class="idx">03</span>Demand Signals</a>
+      <a href="#scenario"  data-nav="scenario"><span class="idx">04</span>Scenario Simulator</a>
+      <a href="#brief"     data-nav="brief"><span class="idx">05</span>Dave&rsquo;s Brief</a>
+    </nav>
+
+    <div class="rail-foot">
+      <b>STATION 8440466</b><br>
+      NEWBURYPORT, MA<br>
+      42.81°N&nbsp;&nbsp;70.88°W<br><br>
+      ENV&nbsp;&nbsp;NOAA · OPEN-METEO<br>
+      SOCIAL&nbsp;&nbsp;REDDIT API<br>
+      WEB&nbsp;&nbsp;EXA SEARCH<br>
+      AI&nbsp;&nbsp;GROQ · LLAMA 3<br><br>
+      <span id="railSkus">25</span> SKUS · 7 CATEGORIES
+    </div>
+  </aside>
+
+  <main>
+    <header class="masthead">
+      <div>
+        <div class="crumb" id="crumb">DAVE&rsquo;S BAIT &amp; TACKLE — PLUM ISLAND</div>
+        <h2 id="viewTitle">Command Center</h2>
+      </div>
+      <div class="meta">
+        <span class="live-pill"><span class="dot"></span>LIVE</span><br>
+        <span id="metaTimes">env — · social —</span><br>
+        <span id="metaDate"></span>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- ══ 01 Command Center ══════════════════════════════════════════ -->
+      <section data-view="command" class="active">
+        <div id="kpiRow" class="kpi-row"><div class="skeleton" style="height:92px;grid-column:1/-1"></div></div>
+        <div class="formula-note">
+          ROP = daily demand × lead time + safety stock&nbsp;&nbsp;·&nbsp;&nbsp;EOQ = √(2DS/H)&nbsp;&nbsp;·&nbsp;&nbsp;DoS = on-hand ÷ daily demand&nbsp;&nbsp;·&nbsp;&nbsp;Rev at risk = (ROP − on-hand) × retail, at-risk SKUs
+        </div>
+
+        <div class="sec-head">
+          <div class="overline">BUYER ACTION</div>
+          <h3>This Morning&rsquo;s Call</h3>
+        </div>
+        <div class="panel"><div class="panel-pad" id="buyerSummary"><div class="skeleton" style="height:44px"></div></div></div>
+
+        <div class="two-col">
+          <div>
+            <div class="sec-head">
+              <div class="overline">FORECAST QUALITY</div>
+              <h3>Model Accuracy</h3>
+              <div class="note">Trailing WAPE — simulated demand history, demo data</div>
+            </div>
+            <div class="panel"><div class="panel-pad" id="mapeCard"><div class="skeleton" style="height:90px"></div></div></div>
+          </div>
+          <div>
+            <div class="sec-head">
+              <div class="overline">LIVE INTEL</div>
+              <h3>Catch Reports</h3>
+              <div class="note">Reddit posts reporting active catches with bait mentions</div>
+            </div>
+            <div id="catchIntel"><div class="skeleton" style="height:90px"></div></div>
+          </div>
+        </div>
+
+        <div class="sec-head">
+          <div class="overline">ALL SKUS</div>
+          <h3>Inventory Status</h3>
+          <div class="note">Demo seed data — modeled after a real bait shop workflow, not connected to live POS.</div>
+        </div>
+        <div class="panel" id="invTableWrap"><div class="panel-pad"><div class="skeleton" style="height:300px"></div></div></div>
+      </section>
+
+      <!-- ══ 02 Inventory ═══════════════════════════════════════════════ -->
+      <section data-view="inventory">
+        <div class="sec-head">
+          <div class="overline">COVER</div>
+          <h3>Days of Supply vs Lead Time</h3>
+        </div>
+        <div class="panel"><div class="panel-pad"><div id="dosChart" class="chart h340"></div></div></div>
+
+        <div class="two-col">
+          <div>
+            <div class="sec-head">
+              <div class="overline">EXPOSURE</div>
+              <h3>Revenue at Risk</h3>
+            </div>
+            <div class="panel"><div class="panel-pad"><div id="rarChart" class="chart h300"></div></div></div>
+          </div>
+          <div>
+            <div class="sec-head">
+              <div class="overline">POLICY</div>
+              <h3>Service Level &amp; Safety Stock</h3>
+              <div class="note" id="policyNote">95% service level · z = 1.645</div>
+            </div>
+            <div class="panel" id="policyPanel"><div class="panel-pad"><div class="skeleton" style="height:260px"></div></div></div>
+          </div>
+        </div>
+
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
+          <div>
+            <div class="overline">ACTION QUEUE</div>
+            <h3>Reorder Recommendations</h3>
+          </div>
+          <div class="chip-row" id="abcFilter">
+            <button class="chip on" data-abc="ALL">ALL</button>
+            <button class="chip" data-abc="A">CLASS A</button>
+            <button class="chip" data-abc="B">CLASS B</button>
+            <button class="chip" data-abc="C">CLASS C</button>
+          </div>
+        </div>
+        <div class="card-grid" id="reorderCards"><div class="skeleton" style="height:150px"></div></div>
+
+        <div class="sec-head" style="display:flex;justify-content:space-between;align-items:flex-end;gap:14px;flex-wrap:wrap">
+          <div>
+            <div class="overline">BUYER WORKFLOW</div>
+            <h3>Draft Purchase Order</h3>
+            <div class="note">Rolls every Critical + Reorder Soon SKU into an order: EOQ for durables, newsvendor for perishables.</div>
+          </div>
+          <button class="btn" id="poBtn">Build draft PO</button>
+        </div>
+        <div id="poSheet"></div>
+      </section>
+
+      <!-- ══ 03 Demand Signals ══════════════════════════════════════════ -->
+      <section data-view="signals">
+        <div id="signalStrip" class="signal-strip"><div class="skeleton" style="height:66px;grid-column:1/-1"></div></div>
+
+        <div class="two-col">
+          <div>
+            <div class="sec-head"><div class="overline">TIDES — NOAA 8440466</div><h3>7-Day Tide Predictions</h3></div>
+            <div class="panel"><div class="panel-pad"><div id="tideChart" class="chart h260"></div></div></div>
+          </div>
+          <div>
+            <div class="sec-head"><div class="overline">BAROMETER</div><h3 id="pressureTitle">Barometric Pressure</h3></div>
+            <div class="panel"><div class="panel-pad"><div id="pressureChart" class="chart h260"></div></div></div>
+          </div>
+        </div>
+
+        <div class="sec-head"><div class="overline">SOLUNAR</div><h3>Moon Phase — Next 7 Days</h3></div>
+        <div class="moon-strip" id="moonStrip"><div class="skeleton" style="height:84px;grid-column:1/-1"></div></div>
+
+        <div class="two-col">
+          <div>
+            <div class="sec-head"><div class="overline">BIOLOGY</div><h3 id="speciesTitle">Species Activity</h3></div>
+            <div class="species-row" id="speciesRow"><div class="skeleton" style="height:56px"></div></div>
+          </div>
+          <div>
+            <div class="sec-head"><div class="overline">WEATHER</div><h3>7-Day Forecast</h3></div>
+            <div class="fc-strip" id="fcStrip"><div class="skeleton" style="height:84px;grid-column:1/-1"></div></div>
+            <div class="formula-note" id="weatherImpact"></div>
+          </div>
+        </div>
+
+        <div class="sec-head"><div class="overline">EVENTS</div><h3>Tournament Calendar</h3></div>
+        <div class="panel" id="tournaments"><div class="panel-pad"><div class="skeleton" style="height:60px"></div></div></div>
+
+        <div class="sec-head"><div class="overline">WEB REPORTS — EXA NEURAL SEARCH</div><h3>Fishing Reports, Last 14 Days</h3></div>
+        <div class="card-grid" id="webReports"><div class="skeleton" style="height:110px"></div></div>
+
+        <div class="two-col">
+          <div>
+            <div class="sec-head"><div class="overline">SOCIAL — LOCAL</div><h3>Plum Island / Merrimack</h3></div>
+            <div id="redditLocal"><div class="skeleton" style="height:110px"></div></div>
+          </div>
+          <div>
+            <div class="sec-head"><div class="overline">SOCIAL — REGIONAL</div><h3 id="redditRegTitle">Regional Chatter</h3></div>
+            <div id="redditRegional"><div class="skeleton" style="height:110px"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ 04 Scenario Simulator ══════════════════════════════════════ -->
+      <section data-view="scenario">
+        <div class="sec-head">
+          <div class="overline">MODE A</div>
+          <h3>Signal Weight Sliders</h3>
+          <div class="note">How much should each signal drive demand? All sliders at 1.0 = neutral baseline, not live conditions.</div>
+        </div>
+        <div class="scen-grid">
+          <div class="panel"><div class="panel-pad" id="sliderBox">
+            <div class="slider-row"><label>Moon</label><input type="range" data-w="moon" min="0" max="1" step="0.1" value="1"><span class="sval">1.0</span></div>
+            <div class="slider-row"><label>Tide</label><input type="range" data-w="tide" min="0" max="1" step="0.1" value="1"><span class="sval">1.0</span></div>
+            <div class="slider-row"><label>Social</label><input type="range" data-w="social" min="0" max="1" step="0.1" value="1"><span class="sval">1.0</span></div>
+            <div class="slider-row"><label>Pressure</label><input type="range" data-w="pressure" min="0" max="1" step="0.1" value="1"><span class="sval">1.0</span></div>
+            <div class="slider-row"><label>Tournament</label><input type="range" data-w="tournament" min="0" max="1" step="0.1" value="1"><span class="sval">1.0</span></div>
+            <div class="slider-row"><label>Season</label><input type="range" data-w="season" min="0" max="1" step="0.1" value="1"><span class="sval">1.0</span></div>
+            <label class="toggle" style="margin-top:4px"><input type="checkbox" id="weekendBoost"> Weekend boost (+25%)</label>
+          </div></div>
+          <div>
+            <div class="scen-banner" id="weightsBanner">Demand Index 1.00× baseline — near normal</div>
+            <div class="panel"><div class="panel-pad"><div id="weightsChart" class="chart h300"></div></div></div>
+          </div>
+        </div>
+
+        <div class="sec-head">
+          <div class="overline">MODE B</div>
+          <h3>Preset Scenarios</h3>
+        </div>
+        <div class="preset-grid" id="presetGrid"></div>
+        <div id="presetResult"></div>
+      </section>
+
+      <!-- ══ 05 Dave ════════════════════════════════════════════════════ -->
+      <section data-view="brief">
+        <div class="dave-head">
+          <svg width="52" height="52" viewBox="0 0 52 52" aria-hidden="true">
+            <circle cx="26" cy="26" r="25" fill="none" stroke="#16232E" stroke-width="1.5"/>
+            <circle cx="26" cy="26" r="21" fill="none" stroke="#C2401C" stroke-width="1" stroke-dasharray="2 3"/>
+            <text x="26" y="34" text-anchor="middle" fill="#16232E" font-size="22" font-weight="800" font-family="Bricolage Grotesque, Georgia, serif">D</text>
+          </svg>
+          <div>
+            <div class="d-name">Dave&rsquo;s Morning Intel</div>
+            <div class="d-sub">DAVE&rsquo;S BAIT &amp; TACKLE · NEWBURYPORT, MA · PLUM ISLAND</div>
+            <div class="dave-badges" id="daveBadges"></div>
+          </div>
+          <div class="dave-attr">
+            <span id="briefTime">GENERATING…</span><br>
+            <span id="briefSource">POWERED BY GROQ · LLAMA 3</span><br>
+            <button class="btn ghost" id="briefRefresh" style="margin-top:6px;font-size:11px;padding:4px 12px">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="brief-body" id="briefBody"><div class="skeleton" style="height:180px"></div></div>
+
+        <div class="sec-head"><div class="overline">Q&amp;A</div><h3>Ask Dave</h3></div>
+        <div class="ask-row">
+          <input type="text" id="askInput" placeholder="What should I push this weekend?" maxlength="300">
+          <button class="btn" id="askBtn">Ask</button>
+        </div>
+        <div class="ask-thread" id="askThread"></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="/static/charts.js?v=2"></script>
+<script src="/static/app.js?v=2"></script>
+</body>
+</html>

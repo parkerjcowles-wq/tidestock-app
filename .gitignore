@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+
+# Internal working files — kept local, not published
+CLAUDE.md
+docs/
