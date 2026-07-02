@@ -99,3 +99,23 @@ def test_index_served(client):
     r = client.get("/")
     assert r.status_code == 200
     assert "text/html" in r.headers["content-type"]
+
+
+def test_security_headers_present(client):
+    r = client.get("/api/dashboard")
+    assert "content-security-policy" in r.headers
+    assert r.headers["x-frame-options"] == "DENY"
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert "strict-transport-security" in r.headers
+
+
+def test_api_docs_disabled(client):
+    assert client.get("/docs").status_code == 404
+    assert client.get("/openapi.json").status_code == 404
+
+
+def test_ask_rate_limited_after_burst(client, monkeypatch):
+    import main
+    monkeypatch.setattr(main, "_generate_llm", lambda p: "ok")
+    codes = [client.post("/api/ask", json={"question": "hi"}).status_code for _ in range(20)]
+    assert 429 in codes  # limiter trips within the burst

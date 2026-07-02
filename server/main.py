@@ -2,10 +2,13 @@
 lives in engine.py, new SC analytics in analytics.py."""
 import datetime
 import pathlib
+import threading
+import time
+from collections import defaultdict
 from typing import Dict, Optional
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -19,8 +22,71 @@ from inventory.forecast import (DEFAULT_WEIGHTS, SCENARIO_EFFECTS,
 from inventory.model import days_of_supply
 from inventory.recommendations import fallback_buyer_brief
 
-app = FastAPI(title="TideStock API")
+# Public demo with no auth — the interactive API docs would just hand an
+# attacker the full schema, so disable them in favor of a smaller surface.
+app = FastAPI(title="TideStock API", docs_url=None, redoc_url=None, openapi_url=None)
 WEB_DIR = pathlib.Path(__file__).resolve().parent.parent / "web"
+
+# ── Security headers + rate limiting ──────────────────────────────────────────
+# CSP: script-src stays strict (no inline scripts exist); style-src allows inline
+# because the markup uses style="" attributes; data: covers the SVG-noise bg.
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdn.jsdelivr.net; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+)
+_SEC_HEADERS = {
+    "Content-Security-Policy": _CSP,
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+}
+
+# Per-IP limits on the endpoints that spend Groq quota (uncacheable / per-user).
+_RL_RULES = {"/api/ask": (15, 60), "/api/brief": (20, 60)}  # path -> (max, seconds)
+_RL_LOCK = threading.Lock()
+_RL_HITS = defaultdict(list)
+
+
+def _client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")  # Render/Cloudflare front the app
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limited(request: Request, rule) -> bool:
+    limit, window = rule
+    ip = _client_ip(request)
+    now = time.time()
+    with _RL_LOCK:
+        if len(_RL_HITS) > 5000:      # crude cap so the map can't grow unbounded
+            _RL_HITS.clear()
+        hits = _RL_HITS[ip]
+        hits[:] = [t for t in hits if now - t < window]
+        if len(hits) >= limit:
+            return True
+        hits.append(now)
+        return False
+
+
+@app.middleware("http")
+async def security_and_ratelimit(request: Request, call_next):
+    rule = _RL_RULES.get(request.url.path)
+    if rule and request.method == "POST" and _rate_limited(request, rule):
+        response = JSONResponse({"detail": "Rate limit exceeded. Try again shortly."},
+                                status_code=429)
+    else:
+        response = await call_next(request)
+    for k, v in _SEC_HEADERS.items():
+        response.headers[k] = v
+    return response
 
 SCENARIO_LABELS = {
     "tournament_weekend": "Tournament This Weekend",
@@ -233,8 +299,26 @@ def _generate_llm(prompt: str) -> str:
     return "".join(generate_brief_streaming(prompt))
 
 
+# The brief is identical for every visitor, so cache it briefly — this keeps a
+# burst of visitors (or a scripted flood) from each triggering a Groq call.
+_BRIEF_TTL = 600  # seconds
+_brief_cache = {"t": 0.0, "v": None}
+_brief_lock = threading.Lock()
+
+
 @app.post("/api/brief")
 def brief(req: BriefReq = BriefReq()):
+    if not req.refresh:
+        with _brief_lock:
+            if _brief_cache["v"] is not None and time.time() - _brief_cache["t"] < _BRIEF_TTL:
+                return _brief_cache["v"]
+    result = _build_brief()
+    with _brief_lock:
+        _brief_cache["t"], _brief_cache["v"] = time.time(), result
+    return result
+
+
+def _build_brief():
     state = engine.get_state()
     ctx = engine.build_brief_context(state)
     web_reports = engine.load_web_reports()[:3]

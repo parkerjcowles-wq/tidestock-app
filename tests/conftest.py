@@ -21,4 +21,11 @@ def offline_engine(monkeypatch):
     monkeypatch.setattr(engine, "fetch_location_reddit_posts", lambda *a, **k: [])
     monkeypatch.setattr(engine, "fetch_web_fishing_reports", lambda *a, **k: [])
     monkeypatch.setattr(engine, "fetch_tournaments", lambda *a, **k: [])
+    # Reset cross-request state so cache/rate-limit don't leak between tests.
+    try:
+        import main
+        main._brief_cache.update({"t": 0.0, "v": None})
+        main._RL_HITS.clear()
+    except Exception:
+        pass
     return engine

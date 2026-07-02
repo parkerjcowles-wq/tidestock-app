@@ -7,3 +7,6 @@ __pycache__/
 # Internal working files — kept local, not published
 CLAUDE.md
 docs/
+
+# Local resume artifact — not for the public repo
+[C] *.png
