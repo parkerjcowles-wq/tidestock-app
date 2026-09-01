@@ -641,7 +641,7 @@
       const b = await fetchJSON("/api/brief", { refresh: !!refresh });
       renderBriefText(b.text);
       $("briefTime").textContent = "GENERATED " + b.generated_at.toUpperCase();
-      $("briefSource").textContent = b.source === "groq" ? "POWERED BY GROQ · LLAMA 3" : "RULE-BASED FALLBACK — AI OFFLINE";
+      $("briefSource").textContent = b.source === "groq" ? "POWERED BY GROQ · GPT-OSS 120B" : "RULE-BASED FALLBACK — AI OFFLINE";
       const badges = $("daveBadges");
       replace(badges,
         el("span", "badge neutral", b.badges.moon),

@@ -175,14 +175,21 @@ def generate_brief_streaming(prompt: str):
         )
         return
     client = groq.Groq(api_key=api_key)
+    kwargs = {}
+    if config.GROQ_REASONING_EFFORT:
+        kwargs["reasoning_effort"] = config.GROQ_REASONING_EFFORT
     stream = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        max_tokens=900,
+        model=config.GROQ_MODEL,
+        max_tokens=config.GROQ_MAX_TOKENS,
         temperature=0.4,
         messages=[{"role": "user", "content": prompt}],
         stream=True,
+        **kwargs,
     )
     for chunk in stream:
+        # Reasoning models put hidden chain-of-thought on a separate delta
+        # field; only `content` is the answer. Reading `.content` alone keeps
+        # reasoning out of the brief without any extra filtering.
         text = chunk.choices[0].delta.content
         if text:
             yield text
