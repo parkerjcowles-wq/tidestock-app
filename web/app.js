@@ -384,14 +384,22 @@
       mk("Tide quality", s.tide_quality, null, tideTone),
       mk("Water temp", s.water_temp.toFixed(1) + "°F", null,
          s.water_temp >= 55 && s.water_temp <= 68 ? C.tokens.sea : null),
-      mk("Pressure", s.pressure_trend, null, presTone),
-      mk("Air / wind", Math.round(s.current_temp_f) + "°F · " + Math.round(s.current_wind_mph) + " mph"),
+      // A null trend / temp / wind means the weather feed fell back. Printing
+      // the old fallback constants here captioned "stable" and "0 mph" as live
+      // readings next to a LIVE badge, which is worse than showing nothing.
+      mk("Pressure", s.pressure_trend || "unavailable", null,
+         s.pressure_trend ? presTone : null),
+      mk("Air / wind",
+         s.current_temp_f == null || s.current_wind_mph == null
+           ? "unavailable"
+           : Math.round(s.current_temp_f) + "°F · " + Math.round(s.current_wind_mph) + " mph"),
       mk("Fishing score", s.fishing_score + "/100",
          s.social_boost > 0 ? "+" + s.social_boost + " social" : null,
          s.fishing_score >= 80 ? C.tokens.sea : s.fishing_score >= 60 ? C.tokens.amber : null));
 
     C.tideChart(s.tide);
     C.pressureChart(s.pressure, s.pressure_trend);
+    setFeedHealth(s.degraded);
 
     // moon strip
     replace($("moonStrip"), ...s.moon.map((m) => {
@@ -679,11 +687,25 @@
     $("askInput").addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
   }
 
+  /* The header pill is the only element telling a visitor whether to trust the
+     numbers. It was hardcoded to LIVE, so it kept claiming live data while the
+     barometer panel below it reported none. Named feeds go in the tooltip. */
+  function setFeedHealth(degraded) {
+    const pill = $("livePill"), label = $("livePillText");
+    if (!pill || !label) return;
+    const down = Array.isArray(degraded) ? degraded : [];
+    pill.classList.toggle("partial", down.length > 0);
+    label.textContent = down.length ? "PARTIAL" : "LIVE";
+    pill.title = down.length
+      ? "Serving fallback data for: " + down.join(", ")
+      : "All feeds live";
+  }
   /* ── boot ─────────────────────────────────────────────────────────────── */
   async function loadDashboard() {
     try {
       const d = await fetchJSON("/api/dashboard");
       state.dash = d;
+      setFeedHealth(d.degraded);
       renderKPIs(d); renderBuyer(d); renderMape(d); renderInvTable(d);
       renderPolicy(d); renderReorderCards(d);
       C.dosChart(d.recs); C.rarChart(d.recs);

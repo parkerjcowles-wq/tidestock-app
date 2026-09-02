@@ -49,7 +49,14 @@ _SEC_HEADERS = {
 }
 
 # Per-IP limits on the endpoints that spend Groq quota (uncacheable / per-user).
-_RL_RULES = {"/api/ask": (15, 60), "/api/brief": (20, 60)}  # path -> (max, seconds)
+# 2026-09-02: 15/20 per minute -> 6/10. The old numbers were sized against
+# abuse, not against the budget they actually spend: the Groq free tier is a
+# 200,000 token/day cap SHARED with Forefront (same org, ~25 briefs/day across
+# both apps), so a single visitor holding 15 asks a minute could exhaust the
+# day's quota for BOTH resume apps in about ten minutes and leave Dave serving
+# the rule-based fallback to everyone after. Six per minute is still well above
+# what reading the dashboard and asking follow-ups needs.
+_RL_RULES = {"/api/ask": (6, 60), "/api/brief": (10, 60)}  # path -> (max, seconds)
 _RL_LOCK = threading.Lock()
 _RL_HITS = defaultdict(list)
 
@@ -148,7 +155,15 @@ def dashboard():
         "today": datetime.date.today().strftime("%b %d, %Y"),
         "fishing_score": state["fishing_score"],
         "service_pct": state["service_pct"],
+        # Also served here so the header's feed-health pill is correct on the
+        # landing view, not only after the visitor opens Demand Signals.
+        "degraded": state["cond"].get("degraded", []),
     }
+
+
+def _weather_down(cond: dict) -> bool:
+    """True when this load served fallback weather rather than live readings."""
+    return "weather" in (cond.get("degraded") or [])
 
 
 @app.get("/api/signals")
@@ -158,10 +173,14 @@ def signals():
     return {
         "tide": cond["tide_df"],
         "tide_quality": cond["tide_quality"],
+        # Nulled for DISPLAY when the weather feed fell back. The engine keeps
+        # real defaults internally because the models index on them; what must
+        # not happen is the dashboard captioning "stable" and "0 mph" as live
+        # readings under a LIVE badge when nothing was actually fetched.
         "pressure": cond["weather"]["pressure_series"],
-        "pressure_trend": cond["weather"]["pressure_trend"],
-        "current_temp_f": cond["weather"].get("current_temp_f"),
-        "current_wind_mph": cond["weather"].get("current_wind_mph"),
+        "pressure_trend": None if _weather_down(cond) else cond["weather"]["pressure_trend"],
+        "current_temp_f": None if _weather_down(cond) else cond["weather"].get("current_temp_f"),
+        "current_wind_mph": None if _weather_down(cond) else cond["weather"].get("current_wind_mph"),
         "water_temp": cond["water_temp"],
         "moon": cond["week_moon"],
         "moon_phase": cond["today_phase"],
@@ -173,6 +192,10 @@ def signals():
         "forecast": cond["forecast"],
         "weather_mult": cond["weather_mult"],
         "tournaments": engine.load_tournaments(),
+        # Names of the upstreams serving fallback data on this load. The
+        # frontend uses it to label a panel as having no data rather than
+        # drawing an empty chart and captioning fallback constants as live.
+        "degraded": cond.get("degraded", []),
         "as_of": cond["loaded_at"],
     }
 
@@ -345,7 +368,8 @@ def _build_brief():
             "badges": {
                 "moon": state["cond"]["today_phase"].replace("_", " ").title(),
                 "water_temp": round(state["cond"]["water_temp"]),
-                "pressure": state["cond"]["weather"]["pressure_trend"].capitalize(),
+                "pressure": ("Unavailable" if _weather_down(state["cond"])
+                             else state["cond"]["weather"]["pressure_trend"].capitalize()),
                 "fishing_score": state["fishing_score"],
                 "social": state["social"]["velocity"].capitalize(),
             }}

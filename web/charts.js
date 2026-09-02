@@ -79,7 +79,21 @@
 
   /* ── barometric pressure with condition bands ─────────────────────────── */
   function pressureChart(rows, trend) {
-    if (!rows.length) return;
+    if (!rows.length) {
+      // Bailing silently left a captioned panel containing an empty white box,
+      // which reads as a broken chart rather than as missing data. Say which
+      // feed is down instead — the rest of the dashboard is unaffected.
+      const host = document.getElementById("pressureChart");
+      if (host) {
+        host.textContent = "";
+        const note = document.createElement("div");
+        note.className = "err-card";
+        note.textContent =
+          "Barometric pressure unavailable — the Open-Meteo feed did not respond on this load. Tide, moon and inventory signals are unaffected.";
+        host.appendChild(note);
+      }
+      return;
+    }
     const vals = rows.map((r) => r.pressure);
     const lo = Math.min(...vals), hi = Math.max(...vals);
     mount("pressureChart", {

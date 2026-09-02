@@ -119,3 +119,58 @@ def test_ask_rate_limited_after_burst(client, monkeypatch):
     monkeypatch.setattr(main, "_generate_llm", lambda p: "ok")
     codes = [client.post("/api/ask", json={"question": "hi"}).status_code for _ in range(20)]
     assert 429 in codes  # limiter trips within the burst
+
+
+def _break_weather(monkeypatch):
+    """Make both Open-Meteo calls fail, the way Render sees them in production."""
+    import engine
+
+    def boom(*a, **k):
+        raise RuntimeError("429 Too Many Requests")
+
+    engine.clear_caches()
+    monkeypatch.setattr(engine, "fetch_weather", boom)
+    monkeypatch.setattr(engine, "fetch_7day_forecast", boom)
+
+
+def test_signals_reports_weather_as_unavailable_not_as_live_readings(client, monkeypatch):
+    """A dead weather feed must not be captioned as a live reading.
+
+    The fallback's "stable" trend and "0 mph" wind were rendering in the signal
+    strip under a LIVE badge with nothing marking them as substitutes, so the
+    dashboard looked healthy while the barometer panel was an empty box.
+    """
+    _break_weather(monkeypatch)
+    body = client.get("/api/signals").json()
+    assert "weather" in body["degraded"]
+    assert body["pressure_trend"] is None
+    assert body["current_temp_f"] is None
+    assert body["current_wind_mph"] is None
+    assert body["pressure"] == []
+    # The rest of the dashboard is independent of the weather feed.
+    assert body["moon"] and body["fishing_score"] is not None
+
+
+def test_brief_survives_a_dead_weather_feed(client, monkeypatch):
+    """Regression: the display-level nulls must not reach the model math.
+
+    `pressure_trend` is indexed by SIGNAL_MULTIPLIERS, capitalized for Dave's
+    badge and interpolated into his prompt. Nulling it in the engine rather
+    than at the API boundary turned a degraded feed into a 500 on /api/brief.
+    """
+    _break_weather(monkeypatch)
+    r = client.post("/api/brief", json={})
+    assert r.status_code == 200, r.text
+    assert r.json()["badges"]["pressure"] == "Unavailable"
+
+
+def test_dashboard_survives_a_dead_weather_feed(client, monkeypatch):
+    _break_weather(monkeypatch)
+    assert client.get("/api/dashboard").status_code == 200
+    assert client.post("/api/scenario",
+                       json={"mode": "preset", "preset": "cold_front"}).status_code == 200
+    # The weights branch is the one that feeds pressure_trend straight into
+    # SIGNAL_MULTIPLIERS[...], so it is where a None trend becomes a KeyError.
+    assert client.post("/api/scenario",
+                       json={"mode": "weights",
+                             "weights": {"tide": 1.0}}).status_code == 200

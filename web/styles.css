@@ -182,6 +182,12 @@ main { flex: 1; min-width: 0; }
 }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
 
+/* A feed is serving fallback data. The pill is the one element that tells a
+   visitor whether to trust the numbers, so it must not keep claiming LIVE
+   while a panel below it is reporting no data. */
+.live-pill.partial { color: var(--amber); border-color: var(--amber); }
+.live-pill.partial .dot { background: var(--amber); animation: none; }
+
 .content { padding: 26px 34px 80px; max-width: var(--maxw); }
 
 section[data-view] { display: none; }

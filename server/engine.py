@@ -5,6 +5,7 @@ build_all_recs + KPI math) behind simple TTL caches, and serializes the
 results to JSON-safe structures. No HTTP concerns here — main.py owns those.
 """
 import datetime
+import logging
 import pathlib
 import threading
 import time
@@ -15,6 +16,9 @@ from dotenv import load_dotenv
 load_dotenv(pathlib.Path(__file__).resolve().parent.parent / ".env")
 
 import config
+
+log = logging.getLogger("tidestock.engine")
+
 from signals.noaa import fetch_tide_predictions, fetch_water_temp, get_tide_quality
 from signals.weather import fetch_weather, fetch_7day_forecast, compute_weather_demand_mult
 from signals.moon import get_week_moon_data, get_moon_phase, get_fishing_score
@@ -66,24 +70,47 @@ def clear_caches():
 
 @ttl_cache(3600)
 def load_conditions():
+    # Which upstreams fell back on this load. Every `except` below is silent by
+    # design — one dead feed must not take the dashboard down — but silence is
+    # how the barometer stayed broken in production for days while the UI kept
+    # showing the fallback's "stable" and "0 mph" next to a LIVE badge. The
+    # exception is logged so the cause is recoverable from Render's logs, and
+    # the name is handed to the frontend so the panel can say it has no data
+    # instead of rendering an empty chart.
+    degraded = []
+
+    def _note(source: str, exc: Exception) -> None:
+        degraded.append(source)
+        log.warning("conditions: %s unavailable (%s: %s)",
+                    source, type(exc).__name__, exc)
+
     try:
         tide_df = fetch_tide_predictions(config.NOAA_STATION_ID, days=7)
-    except Exception:
+    except Exception as e:
+        _note("tide", e)
         tide_df = pd.DataFrame(columns=["time", "height"])
     try:
         water_temp = fetch_water_temp(config.NOAA_STATION_ID)
-    except Exception:
+    except Exception as e:
+        _note("water_temp", e)
         water_temp = 55.0
     try:
         weather = fetch_weather(config.SHOP_LAT, config.SHOP_LON)
-    except Exception:
+    except Exception as e:
+        _note("weather", e)
+        # Keep the internal contract intact: pressure_trend feeds
+        # get_fishing_score, SIGNAL_MULTIPLIERS[...] and Dave's prompt, all of
+        # which index or call methods on it, so a None here is a KeyError and a
+        # 500 rather than an honest gap. The honesty belongs at the API
+        # boundary, where `degraded` turns these into nulls for display only.
         weather = {
             "pressure_series": pd.DataFrame(columns=["time", "pressure"]),
             "current_temp_f": 65.0, "current_wind_mph": 0.0, "pressure_trend": "stable",
         }
     try:
         forecast = fetch_7day_forecast(config.SHOP_LAT, config.SHOP_LON)
-    except Exception:
+    except Exception as e:
+        _note("forecast", e)
         forecast = []
     week_moon     = get_week_moon_data()
     today_phase   = get_moon_phase(datetime.date.today())
@@ -95,6 +122,7 @@ def load_conditions():
         "week_moon": week_moon, "today_phase": today_phase,
         "tide_quality": tide_quality, "fishing_score": fishing_score,
         "forecast": forecast, "weather_mult": weather_mult,
+        "degraded": degraded,
         "loaded_at": datetime.datetime.now().strftime("%I:%M %p"),
     }
 

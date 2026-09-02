@@ -1,8 +1,48 @@
 import datetime
+import logging
+import time
+
 import requests
 import pandas as pd
 
+log = logging.getLogger("tidestock.weather")
+
 _OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+
+# Open-Meteo's free tier meters by source IP, and on Render the app shares an
+# egress IP with every other free instance on the host — so a 429 here is a
+# neighbour's traffic, not this app's. It arrived as a silent fallback: an
+# empty barometer panel and a "0 mph" wind reading captioned as live. The same
+# shared-IP identity is already why Reddit answers this app 403.
+#
+# One retry after a short pause clears the transient case; a hard block still
+# falls through to the caller's fallback, but now with a logged status line
+# saying which it was.
+_RETRIES = 2
+_BACKOFF_SECONDS = 1.5
+_TIMEOUT = 15
+# Default python-requests UA is what a bot filter blocks first. Identify the
+# app honestly instead.
+_HEADERS = {"User-Agent": "TideStock/1.0 (bait-shop demand dashboard; contact via github.com/parkerjcowles-wq)"}
+
+
+def _get_json(params: dict) -> dict:
+    """GET Open-Meteo with one retry, logging the status that made it fail."""
+    last = None
+    for attempt in range(_RETRIES):
+        try:
+            r = requests.get(_OPEN_METEO_URL, params=params,
+                             timeout=_TIMEOUT, headers=_HEADERS)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            last = e
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            log.warning("open-meteo attempt %d/%d failed (status=%s): %s",
+                        attempt + 1, _RETRIES, status, e)
+            if attempt + 1 < _RETRIES:
+                time.sleep(_BACKOFF_SECONDS)
+    raise last
 
 _WMO_EMOJI = {
     0: "☀️", 1: "🌤️", 2: "⛅", 3: "☁️",
@@ -28,9 +68,7 @@ def fetch_weather(lat: float, lon: float) -> dict:
         "wind_speed_unit": "mph",
         "forecast_days": 3,
     }
-    r = requests.get(_OPEN_METEO_URL, params=params, timeout=10)
-    r.raise_for_status()
-    hourly = r.json()["hourly"]
+    hourly = _get_json(params)["hourly"]
     df = pd.DataFrame({
         "time":     pd.to_datetime(hourly["time"]),
         "pressure": hourly["pressure_msl"],
@@ -59,9 +97,7 @@ def fetch_7day_forecast(lat: float, lon: float) -> list:
         "forecast_days":    7,
         "timezone":         "America/New_York",
     }
-    r = requests.get(_OPEN_METEO_URL, params=params, timeout=10)
-    r.raise_for_status()
-    d = r.json()["daily"]
+    d = _get_json(params)["daily"]
     forecast = []
     for i in range(7):
         date_str = d["time"][i]
