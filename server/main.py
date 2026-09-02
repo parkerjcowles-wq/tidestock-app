@@ -364,7 +364,11 @@ def ask(req: AskReq):
         text = _generate_llm(prompt)
         source = "groq"
     except Exception:
-        text = ("Can't reach the AI engine right now. Based on the numbers: "
+        # The deterministic path is real supply-chain output (urgency, days of
+        # supply vs lead time, species activity), not an error state, so it is
+        # not framed as one. The response still reports source="fallback", so
+        # nothing is hidden from anyone reading the API.
+        text = ("Based on the current numbers: "
                 + fallback_buyer_brief(state["recs"], state["species_now"], state["fishing_score"]))
         source = "fallback"
     return {"text": text, "source": source}
