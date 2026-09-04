@@ -512,22 +512,6 @@
     const wr = $("webReports");
     replace(wr, ...(f.web_reports.length ? f.web_reports.slice(0, 6).map(webCard)
       : [el("div", "err-card", "No web reports in the last 14 days.")]));
-    const loc = $("redditLocal");
-    const localCards = f.reddit_local.slice(0, 5).map(feedCard);
-    const socialDown = (f.degraded || []).indexOf("social") !== -1;
-    const localEmpty = socialDown
-      ? "Reddit no longer answers anonymous requests, so this feed is offline. Catch Reports above run on published reports instead."
-      : "No local posts this month.";
-    replace(loc, ...(localCards.length ? localCards : [el("div", "err-card", localEmpty)]));
-    localCards.forEach((c) => { c.style.marginBottom = "10px"; });
-    $("redditRegTitle").textContent = f.velocity
-      ? "Regional Chatter — " + f.velocity.toUpperCase() + " velocity"
-      : "Regional Chatter — feed unavailable";
-    const reg = $("redditRegional");
-    const regCards = f.reddit_regional.slice(0, 5).map(feedCard);
-    replace(reg, ...(regCards.length ? regCards : [el("div", "err-card",
-      socialDown ? "Reddit feed offline — see Catch Reports." : "No regional posts.")]));
-    regCards.forEach((c) => { c.style.marginBottom = "10px"; });
   }
 
   /* ══ 04 Scenario ════════════════════════════════════════════════════── */

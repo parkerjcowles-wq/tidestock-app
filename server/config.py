@@ -22,6 +22,24 @@ FISHING_KEYWORDS = [
     "striper", "sandeel", "bunker", "fluke", "porgy"
 ]
 REDDIT_SUBREDDITS = ["surf_fishing", "SaltwaterFishing", "fishing"]
+
+# Reddit closed its anonymous public JSON API. Verified 2026-09-04 from a
+# laptop with a browser User-Agent, on www.reddit.com and old.reddit.com, on
+# both the .json and .rss endpoints: 403 or 429 every time. This is NOT the
+# Render egress IP - unlike the Open-Meteo block, no header or host change
+# reaches it, and Exa has no Reddit index either (zero results with no date
+# filter at all), so there is no way round it without credentials.
+#
+# Left OFF rather than deleted. Calling a feed that always 403s spends two
+# HTTPS round trips and their timeouts on every cache refresh, on a free
+# instance where the cold start already costs the visitor a minute. Everything
+# behind this flag still works: the fetchers, the sentiment and bait
+# extractors, and the angler-post card in the frontend.
+#
+# To turn it back on: register a Reddit app (reddit.com/prefs/apps), put the
+# client id and secret in .env and in Render's environment, add the OAuth token
+# call to signals/reddit_signals.py, and set this True.
+REDDIT_ENABLED = False
 REDDIT_LOCATION_QUERY = "Plum Island fishing OR Newburyport fishing OR Merrimack River striped bass"
 
 SPECIES_CALENDAR = {

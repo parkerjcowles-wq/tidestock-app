@@ -152,7 +152,8 @@ def test_velocity_is_none_when_no_social_feed_answered(monkeypatch):
 
 
 def test_velocity_is_reported_when_the_feed_does_answer(monkeypatch):
-    import engine
+    import config, engine
+    monkeypatch.setattr(config, "REDDIT_ENABLED", True)
     post = {"velocity": "elevated", "sentiment": "catching",
             "bait_mentions": ["jig"], "category_signals": ["bucktails_jigs"]}
     monkeypatch.setattr(engine, "fetch_reddit_signals", lambda *a, **k: [post] * 3)
@@ -283,3 +284,41 @@ def test_more_page_chrome_seen_live_is_stripped():
     assert "min read" not in out2.lower()
     assert "6" not in out2.split("When")[0]  # the count goes with the words
     assert "Expand image" not in out2
+
+
+# --- the dead feed is not called at all ------------------------------------
+
+def test_reddit_is_not_called_while_it_is_disabled(monkeypatch):
+    """Reddit answers 403 to every anonymous request, so calling it just spends
+    two HTTPS round trips and their timeouts on every cache refresh - on a free
+    instance where a cold start already costs the visitor a minute."""
+    import config, engine
+    called = []
+    monkeypatch.setattr(config, "REDDIT_ENABLED", False)
+    monkeypatch.setattr(engine, "fetch_reddit_signals",
+                        lambda *a, **k: called.append("signals") or [])
+    monkeypatch.setattr(engine, "fetch_location_reddit_posts",
+                        lambda *a, **k: called.append("location") or [])
+    engine.clear_caches()
+    s = engine.load_social_signals()
+    assert called == []
+    assert s["posts"] == [] and s["local_posts"] == []
+    assert s["velocity"] is None
+    assert "social" in s["degraded"]
+    engine.clear_caches()
+
+
+def test_flipping_the_flag_back_on_calls_reddit_again(monkeypatch):
+    """The switch OAuth credentials would flip - the fetchers, the extractors
+    and the card that renders an angler post are all still here."""
+    import config, engine
+    called = []
+    monkeypatch.setattr(config, "REDDIT_ENABLED", True)
+    monkeypatch.setattr(engine, "fetch_reddit_signals",
+                        lambda *a, **k: called.append("signals") or [])
+    monkeypatch.setattr(engine, "fetch_location_reddit_posts",
+                        lambda *a, **k: called.append("location") or [])
+    engine.clear_caches()
+    engine.load_social_signals()
+    assert called == ["signals", "location"]
+    engine.clear_caches()

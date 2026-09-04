@@ -134,17 +134,17 @@ def load_social_signals():
     # of these return nothing on every load. Restoring them needs OAuth app
     # credentials, which is Parker's call to set up, not something to fake.
     degraded = []
-    try:
-        posts = fetch_reddit_signals(limit=20)
-    except Exception as e:
-        log.warning("social: reddit signals unavailable (%s: %s)", type(e).__name__, e)
-        posts = []
-    try:
-        local_posts = fetch_location_reddit_posts(config.REDDIT_LOCATION_QUERY, limit=12)
-    except Exception as e:
-        log.warning("social: reddit location search unavailable (%s: %s)",
-                    type(e).__name__, e)
-        local_posts = []
+    posts, local_posts = [], []
+    if config.REDDIT_ENABLED:
+        try:
+            posts = fetch_reddit_signals(limit=20)
+        except Exception as e:
+            log.warning("social: reddit signals unavailable (%s: %s)", type(e).__name__, e)
+        try:
+            local_posts = fetch_location_reddit_posts(config.REDDIT_LOCATION_QUERY, limit=12)
+        except Exception as e:
+            log.warning("social: reddit location search unavailable (%s: %s)",
+                        type(e).__name__, e)
     if not posts and not local_posts:
         degraded.append("social")
     return {
