@@ -26,7 +26,7 @@ from signals.reddit_signals import (
     fetch_reddit_signals, fetch_location_reddit_posts,
     get_overall_social_velocity, compute_social_fishing_boost, get_sku_demand_signals,
 )
-from signals.web_reports import fetch_web_fishing_reports
+from signals.web_reports import fetch_web_fishing_reports, derive_catch_reports
 from signals.tournament import fetch_tournaments
 from inventory.model import (
     safety_stock, reorder_point, economic_order_quantity, days_of_supply,
@@ -129,20 +129,35 @@ def load_conditions():
 
 @ttl_cache(1800)
 def load_social_signals():
+    # Reddit began answering 403 to anonymous JSON in September 2026 - from
+    # Render AND from a laptop with a browser User-Agent - so in practice both
+    # of these return nothing on every load. Restoring them needs OAuth app
+    # credentials, which is Parker's call to set up, not something to fake.
+    degraded = []
     try:
         posts = fetch_reddit_signals(limit=20)
-    except Exception:
+    except Exception as e:
+        log.warning("social: reddit signals unavailable (%s: %s)", type(e).__name__, e)
         posts = []
     try:
         local_posts = fetch_location_reddit_posts(config.REDDIT_LOCATION_QUERY, limit=12)
-    except Exception:
+    except Exception as e:
+        log.warning("social: reddit location search unavailable (%s: %s)",
+                    type(e).__name__, e)
         local_posts = []
+    if not posts and not local_posts:
+        degraded.append("social")
     return {
         "posts":         posts,
         "local_posts":   local_posts,
-        "velocity":      get_overall_social_velocity(posts),
+        # None, not "baseline". Velocity is derived from upvotes and comment
+        # counts, so with no social feed there is no velocity to report -
+        # "baseline" is a measured state (a quiet feed) and captioning an
+        # absent feed with it is the same defect the barometer had.
+        "velocity":      get_overall_social_velocity(posts) if posts else None,
         "fishing_boost": compute_social_fishing_boost(posts),
         "sku_signals":   get_sku_demand_signals(posts),
+        "degraded":      degraded,
         "loaded_at":     datetime.datetime.now().strftime("%I:%M %p"),
     }
 

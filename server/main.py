@@ -203,11 +203,19 @@ def signals():
 @app.get("/api/feeds")
 def feeds():
     state = engine.get_state()
+    web = engine.load_web_reports()
+    # Catch Reports used to read only Reddit, which no longer answers, so the
+    # panel was empty on every load. Published reports carry the same bait and
+    # sentiment text the extractor wants; what they do not carry is an author or
+    # an upvote count, and `origin` keeps the card honest about that.
+    catch = state["social"]["posts"] or engine.derive_catch_reports(web)
     return {
-        "web_reports": engine.load_web_reports(),
+        "web_reports": web,
         "reddit_local": state["social"]["local_posts"],
         "reddit_regional": state["social"]["posts"],
+        "catch_reports": catch,
         "velocity": state["social"]["velocity"],
+        "degraded": state["social"].get("degraded", []),
         "as_of": state["social"].get("loaded_at", "—"),
     }
 
@@ -371,7 +379,8 @@ def _build_brief():
                 "pressure": ("Unavailable" if _weather_down(state["cond"])
                              else state["cond"]["weather"]["pressure_trend"].capitalize()),
                 "fishing_score": state["fishing_score"],
-                "social": state["social"]["velocity"].capitalize(),
+                "social": (state["social"]["velocity"].capitalize()
+                           if state["social"]["velocity"] else "Unavailable"),
             }}
 
 

@@ -96,3 +96,26 @@ def test_build_brief_context_passes_a_real_trend_through_untouched():
     }
     ctx = engine.build_brief_context(state)
     assert ctx["conditions_ctx"]["pressure_trend"] == "falling"
+
+
+# --- the social feed, same rule as the barometer ---------------------------
+
+def test_prompt_says_the_social_feed_is_unavailable_rather_than_baseline():
+    p = build_brief_prompt(
+        conditions={"moon_phase": "full", "tide_quality": "prime",
+                    "pressure_trend": "falling", "water_temp": 60.0,
+                    "fishing_score": 70, "species": {}},
+        inventory_summary=_INV, social_velocity=None,
+        trend_alerts=[], tournaments=[], critical_skus=[], social_posts=[])
+    low = p.lower()
+    assert "unavailable" in low
+    assert "baseline" not in low
+
+
+def test_ask_dave_prompt_also_declines_to_invent_a_velocity():
+    from ai.brief import build_ask_dave_prompt
+    p = build_ask_dave_prompt("what should I order?",
+                              {"moon_phase": "full", "tide_quality": "prime",
+                               "pressure_trend": "falling", "water_temp": 60.0,
+                               "fishing_score": 70}, None, {})
+    assert "unavailable" in p.lower()

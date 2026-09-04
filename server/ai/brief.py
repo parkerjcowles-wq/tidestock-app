@@ -25,6 +25,21 @@ _PRESSURE_KEY = ("falling = fish feed aggressively before an approaching front; 
                  "stable = consistent bite")
 
 
+def _velocity_text(social_velocity) -> str:
+    """Social velocity, or an explicit gap.
+
+    Velocity is derived from upvotes and comment counts. Reddit stopped
+    answering anonymous JSON in September 2026, so there is frequently no feed
+    at all - and "baseline" describes a QUIET feed, not a missing one. Same
+    rule as `_pressure_line`: say it is unavailable rather than letting the
+    model narrate a social signal nobody measured.
+    """
+    if not social_velocity:
+        return ("unavailable - no social feed answered on this load. Do not "
+                "describe social chatter, angler buzz or how busy the water is.")
+    return str(social_velocity)
+
+
 def _pressure_line(conditions: dict) -> str:
     """The BAROMETRIC PRESSURE prompt line, or an explicit gap.
 
@@ -172,7 +187,7 @@ FISHING SCORE: {conditions.get('fishing_score', 70)}/100
 SPECIES ACTIVITY: {', '.join(f"{sp}: {lvl}" for sp, lvl in conditions.get('species', {}).items())}
 
 SOCIAL SIGNALS:
-  Overall velocity: {social_velocity}
+  Overall velocity: {_velocity_text(social_velocity)}
   Google Trends alerts: {trend_line}
   {tournament_line}
 
@@ -225,7 +240,7 @@ def build_ask_dave_prompt(question: str, conditions: dict, social_velocity: str,
 Answer this question in 2–4 sentences. Be direct and specific. Use the current conditions below.
 
 Current conditions: {_conditions_summary(conditions, species)}
-Social signal: {social_velocity}
+Social signal: {_velocity_text(social_velocity)}
 
 Question: {question}
 

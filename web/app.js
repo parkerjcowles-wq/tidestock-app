@@ -190,10 +190,14 @@
   }
 
   function renderCatchIntel(feeds) {
-    const posts = (feeds.reddit_regional || []).filter((p) => p.sentiment === "catching" && (p.bait_mentions || []).length).slice(0, 3);
+    const reports = (feeds.catch_reports || [])
+      .filter((p) => (p.bait_mentions || []).length)
+      .slice(0, 3);
     const box = $("catchIntel");
-    if (!posts.length) { replace(box, el("div", "err-card", "No catch reports with bait mentions in the current window.")); return; }
-    replace(box, ...posts.map(feedCard));
+    if (!reports.length) { replace(box, el("div", "err-card", "No catch reports with bait mentions in the current window.")); return; }
+    // Reddit posts and published reports render differently on purpose - only
+    // one of them has an author and an upvote count.
+    replace(box, ...reports.map((r) => (r.origin === "web" ? catchCard(r) : feedCard(r))));
   }
 
   function renderInvTable(d) {
@@ -489,18 +493,40 @@
     return card;
   }
 
+  function catchCard(r) {
+    // Deliberately not feedCard: that card carries an avatar, an author handle
+    // and an upvote count, none of which a published report has. Inventing them
+    // would dress a fallback as a live reading.
+    const card = webCard(r);
+    const meta = el("div", "f-meta");
+    // Only badge a report that actually reads as a catch. A neutral weekly
+    // report still earns its place here by naming the baits that are working,
+    // but calling it CATCHING would be putting words in its mouth.
+    if (r.sentiment === "catching") meta.append(el("span", "catching", "CATCHING"));
+    (r.bait_mentions || []).slice(0, 3).forEach((b) => meta.append(el("span", "bait", b.toUpperCase())));
+    card.append(meta);
+    return card;
+  }
+
   function renderFeeds(f) {
     const wr = $("webReports");
     replace(wr, ...(f.web_reports.length ? f.web_reports.slice(0, 6).map(webCard)
       : [el("div", "err-card", "No web reports in the last 14 days.")]));
     const loc = $("redditLocal");
     const localCards = f.reddit_local.slice(0, 5).map(feedCard);
-    replace(loc, ...(localCards.length ? localCards : [el("div", "err-card", "No local posts this month.")]));
+    const socialDown = (f.degraded || []).indexOf("social") !== -1;
+    const localEmpty = socialDown
+      ? "Reddit no longer answers anonymous requests, so this feed is offline. Catch Reports above run on published reports instead."
+      : "No local posts this month.";
+    replace(loc, ...(localCards.length ? localCards : [el("div", "err-card", localEmpty)]));
     localCards.forEach((c) => { c.style.marginBottom = "10px"; });
-    $("redditRegTitle").textContent = "Regional Chatter — " + f.velocity.toUpperCase() + " velocity";
+    $("redditRegTitle").textContent = f.velocity
+      ? "Regional Chatter — " + f.velocity.toUpperCase() + " velocity"
+      : "Regional Chatter — feed unavailable";
     const reg = $("redditRegional");
     const regCards = f.reddit_regional.slice(0, 5).map(feedCard);
-    replace(reg, ...(regCards.length ? regCards : [el("div", "err-card", "No regional posts.")]));
+    replace(reg, ...(regCards.length ? regCards : [el("div", "err-card",
+      socialDown ? "Reddit feed offline — see Catch Reports." : "No regional posts.")]));
     regCards.forEach((c) => { c.style.marginBottom = "10px"; });
   }
 
