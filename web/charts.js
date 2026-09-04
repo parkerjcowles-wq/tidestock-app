@@ -89,7 +89,7 @@
         const note = document.createElement("div");
         note.className = "err-card";
         note.textContent =
-          "Barometric pressure unavailable — the Open-Meteo feed did not respond on this load. Tide, moon and inventory signals are unaffected.";
+          "Barometric pressure unavailable — neither the Open-Meteo nor the NWS station feed answered on this load. Tide, moon and inventory signals are unaffected.";
         host.appendChild(note);
       }
       return;
