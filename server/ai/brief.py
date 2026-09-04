@@ -20,10 +20,35 @@ def _sanitize(text, max_len: int = 120) -> str:
     return text.strip()[:max_len]
 
 
+_PRESSURE_KEY = ("falling = fish feed aggressively before an approaching front; "
+                 "rising = post-front recovery, improving conditions; "
+                 "stable = consistent bite")
+
+
+def _pressure_line(conditions: dict) -> str:
+    """The BAROMETRIC PRESSURE prompt line, or an explicit gap.
+
+    When the feed is down the interpretation key is withheld along with the
+    value: leaving it in front of an "unavailable" reading is an invitation to
+    pick one of the three and narrate it, which is how a brief came to say
+    "pressure is stable" on a load whose own badge said Unavailable.
+    """
+    trend = conditions.get("pressure_trend")
+    if not trend:
+        return ("unavailable - the barometer feed did not answer on this load. "
+                "Do not describe barometric pressure or its effect on the bite "
+                "anywhere in the brief; write from moon, tide, water "
+                "temperature and inventory instead.")
+    return f"{trend} ({_PRESSURE_KEY})"
+
+
 def _conditions_summary(conditions: dict, species: dict = None) -> str:
     moon = conditions.get('moon_phase', 'unknown').replace('_', ' ')
     tide = conditions.get('tide_quality', 'moderate')
-    pressure = conditions.get('pressure_trend', 'stable')
+    # A missing or null trend means the barometer feed did not answer. It must
+    # NOT default to "stable": that is a reading, and the badges on the same
+    # page say Unavailable on exactly those loads.
+    pressure = conditions.get('pressure_trend') or 'unavailable'
     water_temp = conditions.get('water_temp', 55)
     score = conditions.get('fishing_score', 70)
     line = f"Moon {moon}, tides {tide}, pressure {pressure}, water temp {water_temp:.0f}°F, fishing score {score}/100."
@@ -140,7 +165,7 @@ TARGET SERVICE LEVEL: {int(service_level * 100)}%
 
 MOON PHASE: {moon_phase}{(' — ' + moon_fishing_note) if moon_fishing_note else ''}
 TIDE QUALITY: {conditions.get('tide_quality', 'moderate')}
-BAROMETRIC PRESSURE: {conditions.get('pressure_trend', 'stable')} (falling = fish feed aggressively before an approaching front; rising = post-front recovery, improving conditions; stable = consistent bite)
+BAROMETRIC PRESSURE: {_pressure_line(conditions)}
 WATER TEMPERATURE: {conditions.get('water_temp', 55):.1f}°F (optimal striper range: 52–68°F)
 FISHING SCORE: {conditions.get('fishing_score', 70)}/100
 

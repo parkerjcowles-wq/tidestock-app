@@ -342,7 +342,11 @@ def build_brief_context(state: dict) -> dict:
         "date":           datetime.date.today().isoformat(),
         "moon_phase":     cond["today_phase"],
         "tide_quality":   cond["tide_quality"],
-        "pressure_trend": cond["weather"]["pressure_trend"],
+        # None, not the engine's internal "stable" placeholder, when the feed
+        # is down - Dave narrates this line, and the badges on the same page
+        # already say Unavailable. See ai/brief._pressure_line.
+        "pressure_trend": (None if "weather" in (cond.get("degraded") or [])
+                           else cond["weather"]["pressure_trend"]),
         "water_temp":     cond["water_temp"],
         "fishing_score":  cond["fishing_score"],
         "species":        state["species_now"],
