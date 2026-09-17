@@ -1,3 +1,5 @@
+import datetime
+
 from conftest import offline_engine
 
 
@@ -37,3 +39,18 @@ def test_brief_context_offline(monkeypatch):
     ctx = engine.build_brief_context(state)
     assert set(ctx) == {"inv_summary", "conditions_ctx", "critical_skus", "dave_posts"}
     assert ctx["conditions_ctx"]["moon_phase"]
+
+
+def test_brief_context_date_uses_shop_clock_not_utc_today(monkeypatch):
+    # Pin the shop clock to a fixed ET date so this can't pass by accident
+    # near the UTC/ET day boundary - a bare datetime.date.today() would drift
+    # a day ahead of this in the evening ET, which is exactly the "12:33 AM,
+    # SEP 17" bug this test guards against.
+    engine = offline_engine(monkeypatch)
+    import clock
+    fixed_date = datetime.date(2026, 12, 25)
+    monkeypatch.setattr(clock, "today_local", lambda: fixed_date)
+
+    state = engine.get_state()
+    ctx = engine.build_brief_context(state)
+    assert ctx["conditions_ctx"]["date"] == fixed_date.isoformat()

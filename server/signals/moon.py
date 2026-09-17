@@ -1,6 +1,8 @@
 import datetime
 import ephem
 
+import clock
+
 _PEAK_PHASES = {"new", "full"}
 
 # Falling pressure ahead of an approaching front triggers aggressive feeding —
@@ -37,7 +39,7 @@ def get_fishing_score(moon_phase: str, pressure_trend: str) -> int:
 
 def get_week_moon_data(start: datetime.date = None) -> list:
     if start is None:
-        start = datetime.date.today()
+        start = clock.today_local()
     result = []
     for i in range(7):
         d = start + datetime.timedelta(days=i)

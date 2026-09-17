@@ -4,7 +4,6 @@ Ports the aggregation that lives in the original Streamlit app.py (loaders +
 build_all_recs + KPI math) behind simple TTL caches, and serializes the
 results to JSON-safe structures. No HTTP concerns here — main.py owns those.
 """
-import datetime
 import logging
 import pathlib
 import threading
@@ -115,7 +114,7 @@ def load_conditions():
         _note("forecast", e)
         forecast = []
     week_moon     = get_week_moon_data()
-    today_phase   = get_moon_phase(datetime.date.today())
+    today_phase   = get_moon_phase(clock.today_local())
     tide_quality  = get_tide_quality(tide_df)
     fishing_score = get_fishing_score(today_phase, weather["pressure_trend"])
     weather_mult  = compute_weather_demand_mult(forecast)
@@ -190,7 +189,7 @@ def build_all_recs(demand_mult: float, delay_days: int, service_pct: float,
                    sku_signals: dict = None, weather_mult: float = 1.0) -> list:
     z         = SERVICE_LEVEL_Z[service_pct]
     inventory = load_inventory()
-    month_now = datetime.date.today().month
+    month_now = clock.today_local().month
     striper_active = species_now.get("Striped Bass", "Inactive") in ("Peak", "Good")
 
     season_level = SEASON_MAP.get(month_now, "shoulder")
@@ -301,7 +300,7 @@ def get_state(demand_mult: float = 1.0, delay_days: int = 0,
               bad_weather: bool = False) -> dict:
     cond   = load_conditions()
     social = load_social_signals()
-    month_now   = datetime.date.today().month
+    month_now   = clock.today_local().month
     species_now = config.SPECIES_CALENDAR.get(month_now, {})
     fishing_score = min(cond["fishing_score"] + social["fishing_boost"], 100)
     eff_mult = demand_mult * (0.80 if bad_weather else 1.0)
@@ -356,7 +355,7 @@ def build_brief_context(state: dict) -> dict:
                                   "critical_skus": critical_count}
 
     conditions_ctx = {
-        "date":           datetime.date.today().isoformat(),
+        "date":           clock.today_local().isoformat(),
         "moon_phase":     cond["today_phase"],
         "tide_quality":   cond["tide_quality"],
         # None, not the engine's internal "stable" placeholder, when the feed

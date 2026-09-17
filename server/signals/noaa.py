@@ -2,10 +2,16 @@ import requests
 import pandas as pd
 import datetime
 
+import clock
+
 _BASE = "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
 
 def fetch_tide_predictions(station_id: str, days: int = 7) -> pd.DataFrame:
-    today = datetime.date.today()
+    # begin/end are the station's own local calendar days (time_zone=lst_ldt
+    # asks NOAA for local time back), so the query window has to be built
+    # from ET "today" - UTC "today" flips a day early in the evening ET and
+    # would clip today's remaining tides from a Newburyport visitor's chart.
+    today = clock.today_local()
     end = today + datetime.timedelta(days=days)
     params = {
         "station": station_id,
