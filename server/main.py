@@ -1,6 +1,5 @@
 """HTTP surface for the TideStock mockup. Routes stay thin — data assembly
 lives in engine.py, new SC analytics in analytics.py."""
-import datetime
 import pathlib
 import threading
 import time
@@ -13,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 import analytics
+import clock
 import config
 import engine
 from ai.brief import build_ask_dave_prompt, build_brief_prompt, generate_brief_streaming
@@ -152,7 +152,7 @@ def dashboard():
         "as_of": state["cond"]["loaded_at"],
         "social_as_of": state["social"].get("loaded_at", "—"),
         "month": state["month_name"],
-        "today": datetime.date.today().strftime("%b %d, %Y"),
+        "today": clock.today_local().strftime("%b %d, %Y"),
         "fishing_score": state["fishing_score"],
         "service_pct": state["service_pct"],
         # Also served here so the header's feed-health pill is correct on the
@@ -242,7 +242,7 @@ def scenario(req: ScenarioReq):
                              service_pct=req.service_pct, bad_weather=req.bad_weather)
     recs = state["recs"]
     cond = state["cond"]
-    month_now = datetime.date.today().month
+    month_now = clock.today_local().month
 
     cat_base = {}
     for r in recs:
@@ -377,7 +377,7 @@ def _build_brief():
         text = fallback_buyer_brief(state["recs"], state["species_now"], state["fishing_score"])
         source = "fallback"
     return {"text": text, "source": source,
-            "generated_at": datetime.datetime.now().strftime("%I:%M %p"),
+            "generated_at": clock.now_local().strftime("%I:%M %p"),
             "badges": {
                 "moon": state["cond"]["today_phase"].replace("_", " ").title(),
                 "water_temp": round(state["cond"]["water_temp"]),

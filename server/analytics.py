@@ -1,8 +1,9 @@
 """New SC-manager analytics for the mockup: ABC classification, forecast
 accuracy (MAPE over simulated history), and the draft PO builder."""
-import datetime
 import random
 import statistics
+
+import clock
 
 
 def abc_classify(recs: list) -> dict:
@@ -94,7 +95,7 @@ def build_po_draft(recs: list) -> dict:
     ]
     all_lines = [l for g in group_list for l in g["lines"]]
     return {
-        "generated_at": datetime.datetime.now().strftime("%b %d, %Y %I:%M %p"),
+        "generated_at": clock.now_local().strftime("%b %d, %Y %I:%M %p"),
         "groups": group_list,
         "line_count": len(all_lines),
         "total_units": sum(l["order_qty"] for l in all_lines),

@@ -13,6 +13,8 @@ import time
 import pandas as pd
 from dotenv import load_dotenv
 
+import clock
+
 load_dotenv(pathlib.Path(__file__).resolve().parent.parent / ".env")
 
 import config
@@ -123,7 +125,7 @@ def load_conditions():
         "tide_quality": tide_quality, "fishing_score": fishing_score,
         "forecast": forecast, "weather_mult": weather_mult,
         "degraded": degraded,
-        "loaded_at": datetime.datetime.now().strftime("%I:%M %p"),
+        "loaded_at": clock.now_local().strftime("%I:%M %p"),
     }
 
 
@@ -158,7 +160,7 @@ def load_social_signals():
         "fishing_boost": compute_social_fishing_boost(posts),
         "sku_signals":   get_sku_demand_signals(posts),
         "degraded":      degraded,
-        "loaded_at":     datetime.datetime.now().strftime("%I:%M %p"),
+        "loaded_at":     clock.now_local().strftime("%I:%M %p"),
     }
 
 
@@ -310,7 +312,7 @@ def get_state(demand_mult: float = 1.0, delay_days: int = 0,
         "cond": cond, "social": social, "species_now": species_now,
         "fishing_score": fishing_score, "recs": recs,
         "service_pct": service_pct,
-        "month_name": datetime.date.today().strftime("%B"),
+        "month_name": clock.today_local().strftime("%B"),
     }
 
 
