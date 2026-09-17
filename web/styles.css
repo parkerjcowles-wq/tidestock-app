@@ -649,6 +649,9 @@ select {
 
 /* Tables scroll inside their panel instead of widening the page on phones. */
 .tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* Grid items default to min-width:auto, so a scrolling table inside a
+   .two-col column widened the whole column past the phone viewport. */
+.two-col > *, .scen-grid > * { min-width: 0; }
 @media (max-width: 760px) {
   .tbl-scroll .tbl { min-width: 620px; }
 }
