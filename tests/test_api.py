@@ -181,6 +181,8 @@ def test_dashboard_survives_a_dead_weather_feed(client, monkeypatch):
     {"mode": "weights", "service_pct": 1.0},
     {"mode": "weights", "demand_mult": -1},
     {"mode": "weights", "delay_days": -3},
+    {"mode": "weights", "demand_mult": 11},
+    {"mode": "weights", "delay_days": 61},
 ])
 def test_scenario_rejects_out_of_range_inputs_with_422(client, body):
     r = client.post("/api/scenario", json=body)
@@ -197,3 +199,18 @@ def test_brief_social_badge_is_null_when_no_feed(client, monkeypatch):
     monkeypatch.setattr(main, "_generate_llm", lambda p: "ok")
     body = client.post("/api/brief", json={"refresh": True}).json()
     assert body["badges"]["social"] is None
+
+
+def test_dashboard_today_is_stamped_in_eastern_time(client, monkeypatch):
+    import datetime
+    from zoneinfo import ZoneInfo
+
+    import clock
+
+    fixed_utc = datetime.datetime(2026, 9, 17, 0, 30, tzinfo=datetime.timezone.utc)
+    fixed_et = fixed_utc.astimezone(ZoneInfo("America/New_York"))
+    monkeypatch.setattr(clock, "now_local", lambda: fixed_et)
+    monkeypatch.setattr(clock, "today_local", lambda: fixed_et.date())
+
+    body = client.get("/api/dashboard").json()
+    assert body["today"] == "Sep 16, 2026"
