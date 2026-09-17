@@ -627,6 +627,19 @@
   }
 
   /* ══ 05 Dave ════════════════════════════════════════════════════════── */
+  // **bold** and *italic* → <strong>/<em>, built via text nodes only (no HTML
+  // injection possible). Dave cites publications as *The Mighty Fish*, which
+  // rendered with the asterisks showing.
+  function inlineMarkup(content) {
+    const span = el("span");
+    content.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/).forEach((part) => {
+      if (part.startsWith("**") && part.endsWith("**") && part.length > 4) span.append(el("strong", null, part.slice(2, -2)));
+      else if (part.startsWith("*") && part.endsWith("*") && part.length > 2) span.append(el("em", null, part.slice(1, -1)));
+      else if (part) span.append(document.createTextNode(part));
+    });
+    return span;
+  }
+
   function renderBriefText(text) {
     const body = $("briefBody");
     const nodes = [];
@@ -638,12 +651,7 @@
       const content = isBullet ? line.slice(2).trim() : line.trim();
       const holder = isBullet ? el("div", "bullet") : el("p");
       if (isBullet) holder.append(el("span", "tick", "—"));
-      const span = el("span");
-      // **bold** → <strong>, built via text nodes only (no HTML injection possible)
-      content.split(/(\*\*[^*]+\*\*)/).forEach((part) => {
-        if (part.startsWith("**") && part.endsWith("**")) span.append(el("strong", null, part.slice(2, -2)));
-        else if (part) span.append(document.createTextNode(part));
-      });
+      const span = inlineMarkup(content);
       holder.append(span);
       nodes.push(holder);
     });
@@ -689,7 +697,7 @@
       $("askThread").prepend(item);
       try {
         const res = await fetchJSON("/api/ask", { question: q });
-        replace(a, el("span", null, res.text));
+        replace(a, inlineMarkup(res.text));
         if (res.source !== "groq") a.append(el("div", "dim", "rule-based fallback — AI offline"));
       } catch (e) {
         replace(a, el("span", "dim", "Dave couldn't answer — request failed."));
