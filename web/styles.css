@@ -646,3 +646,9 @@ select {
   .kpi-row { grid-template-columns: repeat(2, 1fr); }
   .kpi { border-bottom: 1px solid var(--hairline); }
 }
+
+/* Tables scroll inside their panel instead of widening the page on phones. */
+.tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 760px) {
+  .tbl-scroll .tbl { min-width: 620px; }
+}

@@ -134,7 +134,7 @@
   function dosChart(recs) {
     const rows = recs.filter((r) => r.dos < 999).slice(0, 18).reverse();
     mount("dosChart", {
-      grid: { left: 168, right: 42, top: 8, bottom: 26 },
+      grid: { left: 168, right: 42, top: 22, bottom: 26 },
       tooltip: { ...TIP,
         formatter: (p) => {
           const r = rows[p.dataIndex];

@@ -222,6 +222,7 @@
     });
     tbl.append(tb);
     const pad = el("div", "panel-pad"); pad.style.padding = "6px 8px"; pad.append(tbl);
+    pad.classList.add("tbl-scroll");
     replace($("invTableWrap"), pad);
   }
 
@@ -245,6 +246,7 @@
     });
     tbl.append(tb);
     const pad = el("div", "panel-pad"); pad.style.padding = "6px 8px"; pad.append(tbl);
+    pad.classList.add("tbl-scroll");
     replace($("policyPanel"), pad);
   }
 
@@ -344,7 +346,7 @@
         lines.push(`  ${l.product_name} — ${l.order_qty} ${l.unit} @ $${l.unit_cost.toFixed(2)} = $${l.line_cost.toFixed(2)} (${l.supplier})`);
       });
       tbl.append(tb);
-      const pad = el("div"); pad.style.padding = "2px 8px 10px"; pad.append(tbl);
+      const pad = el("div", "tbl-scroll"); pad.style.padding = "2px 8px 10px"; pad.append(tbl);
       sheet.append(pad);
       lines.push(`  Subtotal: $${g.subtotal.toFixed(2)}`);
     });
