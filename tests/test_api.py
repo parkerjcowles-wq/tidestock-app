@@ -190,3 +190,10 @@ def test_scenario_rejects_out_of_range_inputs_with_422(client, body):
 def test_scenario_accepts_every_supported_service_level(client):
     for sp in (0.85, 0.90, 0.95, 0.99):
         assert client.post("/api/scenario", json={"mode": "weights", "service_pct": sp}).status_code == 200
+
+
+def test_brief_social_badge_is_null_when_no_feed(client, monkeypatch):
+    import main
+    monkeypatch.setattr(main, "_generate_llm", lambda p: "ok")
+    body = client.post("/api/brief", json={"refresh": True}).json()
+    assert body["badges"]["social"] is None

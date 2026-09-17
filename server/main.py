@@ -384,8 +384,10 @@ def _build_brief():
                 "pressure": ("Unavailable" if _weather_down(state["cond"])
                              else state["cond"]["weather"]["pressure_trend"].capitalize()),
                 "fishing_score": state["fishing_score"],
+                # Reddit is retired (config.REDDIT_ENABLED = False); a permanent
+                # "Social: Unavailable" chip read as a broken feed to visitors.
                 "social": (state["social"]["velocity"].capitalize()
-                           if state["social"]["velocity"] else "Unavailable"),
+                           if state["social"]["velocity"] else None),
             }}
 
 

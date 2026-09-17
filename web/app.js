@@ -661,12 +661,14 @@
       $("briefTime").textContent = "GENERATED " + b.generated_at.toUpperCase();
       $("briefSource").textContent = b.source === "groq" ? "POWERED BY GROQ · GPT-OSS 120B" : "RULE-BASED SUMMARY · DETERMINISTIC ENGINE";
       const badges = $("daveBadges");
-      replace(badges,
+      const chips = [
         el("span", "badge neutral", b.badges.moon),
         el("span", "badge neutral", b.badges.water_temp + "°F water"),
         el("span", "badge neutral", b.badges.pressure + " pressure"),
         el("span", "badge " + (b.badges.fishing_score >= 70 ? "healthy" : "watch"), "Fishing " + b.badges.fishing_score + "/100"),
-        el("span", "badge neutral", "Social: " + b.badges.social));
+      ];
+      if (b.badges.social) chips.push(el("span", "badge neutral", "Social: " + b.badges.social));
+      replace(badges, ...chips);
     } catch (e) {
       errCard(body, "Dave's brief", () => loadBrief(true));
       $("briefTime").textContent = "FAILED";
