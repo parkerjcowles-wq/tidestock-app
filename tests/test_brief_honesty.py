@@ -7,7 +7,7 @@ get_fishing_score, and that placeholder reached the prompt, so a live brief read
 "Barometric pressure is stable, which supports a consistent bite" on a load
 whose own badge said Unavailable.
 """
-from ai.brief import _conditions_summary, build_brief_prompt
+from ai.brief import _conditions_summary, build_ask_dave_prompt, build_brief_prompt
 
 
 _INV = {"Bait": {"dos": 4.0, "urgency": "Order Today", "critical_skus": 2}}
@@ -113,15 +113,11 @@ def test_prompt_says_the_social_feed_is_unavailable_rather_than_baseline():
 
 
 def test_ask_dave_prompt_also_declines_to_invent_a_velocity():
-    from ai.brief import build_ask_dave_prompt
     p = build_ask_dave_prompt("what should I order?",
                               {"moon_phase": "full", "tide_quality": "prime",
                                "pressure_trend": "falling", "water_temp": 60.0,
                                "fishing_score": 70}, None, {})
     assert "unavailable" in p.lower()
-
-
-from ai.brief import build_ask_dave_prompt
 
 
 def test_ask_prompt_lists_stocked_products_and_limits_recommendations():
@@ -134,3 +130,16 @@ def test_ask_prompt_lists_stocked_products_and_limits_recommendations():
     )
     assert "Bloodworms — Dozen" in prompt
     assert "Only recommend products from this list" in prompt
+
+
+def test_ask_prompt_with_no_products_has_a_blank_line_before_the_question():
+    prompt = build_ask_dave_prompt(
+        "What bait for stripers?",
+        {"moon_phase": "full", "tide_quality": "prime", "pressure_trend": "falling",
+         "water_temp": 60.0, "fishing_score": 70},
+        "baseline", {"Striped Bass": "Good"},
+    )
+    lines = prompt.split("\n")
+    social_idx = next(i for i, l in enumerate(lines) if l.startswith("Social signal:"))
+    assert lines[social_idx + 1] == ""
+    assert lines[social_idx + 2].startswith("Question:")

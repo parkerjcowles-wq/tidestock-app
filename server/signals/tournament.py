@@ -13,24 +13,35 @@ _EXA_URL = "https://api.exa.ai/search"
 # articles, last year's freshwater bass listings. On 2026-09-16 every one of the
 # four rows on the live calendar was one of those, all labeled "same week".
 _EVENT_RE = re.compile(
-    r"\b(tournament|derby|classic|shootout|challenge|fishing contest|open)\b", re.I)
+    r"\b(tournament|derby|classic|shootout|challenge|fishing contest)\b", re.I)
+# Case-sensitive: "Newburyport Open" is a named event; "Store open hours" is not.
+_NAMED_OPEN_RE = re.compile(r"\b[A-Z][\w']+ Open\b")
 _NOT_EVENT_RE = re.compile(
-    r"\b(entry form|registration form|rules|results|report|recap|charter|guide|how to)\b",
+    r"\b(entry form|registration form|rules|results|fishing report|recap|"
+    r"charter service|charters|guide|how to)\b",
     re.I)
 _YEAR_RE = re.compile(r"\b(20\d\d)\b")
-_PHONE_RE = re.compile(r"\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}")
+# A parenthesized area code, or three groups of digits separated by the same
+# space/dot/dash punctuation on both sides — narrow enough that a bare year
+# ("2026") next to a lone number ("Derby 2026 1234567") is untouched.
+_PHONE_RE = re.compile(r"\(\d{3}\)\s?\d{3}[\s.-]?\d{4}|\b\d{3}[\s.-]\d{3}[\s.-]\d{4}\b")
 
 
 def _clean_title(raw: str) -> str:
     text = _PHONE_RE.sub(" ", raw or "")
-    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)      # "WinnipesaukeeSeptember"
+    # "WinnipesaukeeSeptember" splits; "McDonald's", "iPhone", "FishOn" don't —
+    # real names mash a short prefix onto a capitalized word, so require both
+    # sides to run at least 3 letters before treating it as two words stuck together.
+    text = re.sub(r"([a-z]{3,})([A-Z][a-z]{2,})", r"\1 \2", text)
     text = re.sub(r"(\d{4})(?=[A-Za-z])", r"\1 ", text)    # "2025On-Site"
     text = re.sub(r"\s+", " ", text).strip(" -|·:")
     return text[:90]
 
 
 def _is_event(title: str, today: datetime.date) -> bool:
-    if not _EVENT_RE.search(title) or _NOT_EVENT_RE.search(title):
+    if not (_EVENT_RE.search(title) or _NAMED_OPEN_RE.search(title)):
+        return False
+    if _NOT_EVENT_RE.search(title):
         return False
     years = [int(y) for y in _YEAR_RE.findall(title)]
     return not years or max(years) >= today.year
