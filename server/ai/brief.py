@@ -235,13 +235,22 @@ def generate_brief_streaming(prompt: str):
             yield text
 
 
-def build_ask_dave_prompt(question: str, conditions: dict, social_velocity: str, species: dict) -> str:
+def build_ask_dave_prompt(question: str, conditions: dict, social_velocity: str,
+                          species: dict, products: list = None) -> str:
+    # Without the shelf list Dave answered "stock up on live eels and clams",
+    # neither of which the shop carries.
+    stocked = ", ".join(_sanitize(p, 60) for p in (products or [])[:40])
+    shelf = (
+        f"Products in stock: {stocked}\n"
+        "Only recommend products from this list, by name. If the best option "
+        "isn't on it, say the shop doesn't carry it.\n\n"
+        if stocked else ""
+    )
     return f"""You are Dave, the AI fishing assistant at Dave's Bait & Tackle in Newburyport, MA (Plum Island area).
 Answer this question in 2–4 sentences. Be direct and specific. Use the current conditions below.
 
 Current conditions: {_conditions_summary(conditions, species)}
 Social signal: {_velocity_text(social_velocity)}
-
-Question: {question}
+{shelf}Question: {question}
 
 Dave's answer:"""

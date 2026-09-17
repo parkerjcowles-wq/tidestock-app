@@ -119,3 +119,18 @@ def test_ask_dave_prompt_also_declines_to_invent_a_velocity():
                                "pressure_trend": "falling", "water_temp": 60.0,
                                "fishing_score": 70}, None, {})
     assert "unavailable" in p.lower()
+
+
+from ai.brief import build_ask_dave_prompt
+
+
+def test_ask_prompt_lists_stocked_products_and_limits_recommendations():
+    prompt = build_ask_dave_prompt(
+        "What bait for stripers?",
+        {"moon_phase": "full", "tide_quality": "prime", "pressure_trend": "falling",
+         "water_temp": 60.0, "fishing_score": 70},
+        "baseline", {"Striped Bass": "Good"},
+        products=["Bloodworms — Dozen", "Spro Bucktail Jig 1oz — White"],
+    )
+    assert "Bloodworms — Dozen" in prompt
+    assert "Only recommend products from this list" in prompt

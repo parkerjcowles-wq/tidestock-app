@@ -397,7 +397,8 @@ def ask(req: AskReq):
     state = engine.get_state()
     ctx = engine.build_brief_context(state)
     prompt = build_ask_dave_prompt(question, ctx["conditions_ctx"],
-                                   state["social"]["velocity"], state["species_now"])
+                                   state["social"]["velocity"], state["species_now"],
+                                   products=[r["product_name"] for r in state["recs"]])
     try:
         text = _generate_llm(prompt)
         source = "groq"
