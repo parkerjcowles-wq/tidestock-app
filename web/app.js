@@ -453,14 +453,14 @@
         const row = el("div");
         row.style.cssText = "display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed var(--hairline)";
         row.append(safeLink(t.url, t.title));
-        row.append(el("span", "dim", (t.proximity || "").replace(/_/g, " ")));
+        row.append(el("span", "dim", t.proximity ? t.proximity.replace(/_/g, " ") : "date TBC"));
         row.lastChild.style.cssText = "font-family:var(--font-mono);font-size:10px;flex-shrink:0";
         list.append(row);
       });
       list.lastChild.style.borderBottom = "none";
       replace(tWrap, list);
     } else {
-      replace(tWrap, el("div", "err-card", "No tournaments found within 30 days."));
+      replace(tWrap, el("div", "err-card", "No upcoming tournaments found."));
     }
   }
 
