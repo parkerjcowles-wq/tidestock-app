@@ -10,7 +10,7 @@ from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 import analytics
 import config
@@ -19,7 +19,7 @@ from ai.brief import build_ask_dave_prompt, build_brief_prompt, generate_brief_s
 from inventory.forecast import (DEFAULT_WEIGHTS, SCENARIO_EFFECTS,
                                 compute_demand_index,
                                 compute_scenario_demand_by_category)
-from inventory.model import days_of_supply
+from inventory.model import SERVICE_LEVEL_Z, days_of_supply
 from inventory.recommendations import fallback_buyer_brief
 
 # Public demo with no auth — the interactive API docs would just hand an
@@ -118,8 +118,8 @@ class ScenarioReq(BaseModel):
     weights: Optional[Dict[str, float]] = None
     preset: Optional[str] = None
     weekend_boost: bool = False
-    demand_mult: float = 1.0
-    delay_days: int = 0
+    demand_mult: float = Field(1.0, ge=0.0, le=10.0)
+    delay_days: int = Field(0, ge=0, le=60)
     service_pct: float = config.DEFAULT_SERVICE_LEVEL
     bad_weather: bool = False
 
@@ -232,6 +232,11 @@ def scenario(req: ScenarioReq):
         raise HTTPException(status_code=422, detail="mode must be 'weights' or 'preset'")
     if req.mode == "preset" and req.preset not in SCENARIO_EFFECTS:
         raise HTTPException(status_code=422, detail=f"unknown preset: {req.preset}")
+    if req.service_pct not in SERVICE_LEVEL_Z:
+        raise HTTPException(
+            status_code=422,
+            detail=f"service_pct must be one of {sorted(SERVICE_LEVEL_Z)}",
+        )
 
     state = engine.get_state(demand_mult=req.demand_mult, delay_days=req.delay_days,
                              service_pct=req.service_pct, bad_weather=req.bad_weather)

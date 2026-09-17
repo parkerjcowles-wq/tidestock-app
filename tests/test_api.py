@@ -174,3 +174,19 @@ def test_dashboard_survives_a_dead_weather_feed(client, monkeypatch):
     assert client.post("/api/scenario",
                        json={"mode": "weights",
                              "weights": {"tide": 1.0}}).status_code == 200
+
+
+@pytest.mark.parametrize("body", [
+    {"mode": "weights", "service_pct": 0.97},
+    {"mode": "weights", "service_pct": 1.0},
+    {"mode": "weights", "demand_mult": -1},
+    {"mode": "weights", "delay_days": -3},
+])
+def test_scenario_rejects_out_of_range_inputs_with_422(client, body):
+    r = client.post("/api/scenario", json=body)
+    assert r.status_code == 422
+
+
+def test_scenario_accepts_every_supported_service_level(client):
+    for sp in (0.85, 0.90, 0.95, 0.99):
+        assert client.post("/api/scenario", json={"mode": "weights", "service_pct": sp}).status_code == 200
